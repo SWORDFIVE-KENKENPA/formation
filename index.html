@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>バレーボールフォーメーション</title>
+<meta name="theme-color" content="#001F43">
+<meta name="description" content="バレーボールのローテーション表・フォーメーション表を作成してPDF出力するアプリ">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="フォーメーション">
+<script src="lib/html2canvas.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --navy:#001F43; --navy2:#0A2F5E; --navy3:#1B4479;
+  --yellow:#F4E511; --yellow-soft:#FCF7C8;
+  --bg:#EFF2F7; --line:#D3DAE5; --text:#13203A; --muted:#5B6880; --danger:#C8323B; --ok:#1E8A5A;
+  --font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px}
+button{font-family:inherit}
+/* ---------- header ---------- */
+header.app{background:var(--navy);color:#fff;border-bottom:5px solid var(--yellow);padding-top:env(safe-area-inset-top)}
+nav.tabs{position:sticky;top:0;z-index:20}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--navy);color:#fff;border:2px solid var(--yellow);border-radius:12px;padding:12px 16px;display:none;align-items:center;gap:12px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:13px;max-width:92vw}
+.toast.show{display:flex}
+.ios-guide{font-size:13px;line-height:1.8}
+.app-inner{max-width:1200px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:.05em}
+.logo small{display:block;font-size:10px;font-weight:600;letter-spacing:.2em;color:var(--yellow);opacity:.95}
+.head-tools{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.team-badge{font-size:13px;padding:6px 12px;border:1px solid rgba(255,255,255,.3);border-radius:999px}
+nav.tabs{background:var(--navy2)}
+nav.tabs .app-inner{padding:0 20px;gap:4px}
+nav.tabs button{background:none;border:none;color:#C9D4E6;padding:13px 16px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:3px solid transparent}
+nav.tabs button .n{width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:12px}
+nav.tabs button.active{color:#fff;border-bottom-color:var(--yellow)}
+nav.tabs button.active .n{background:var(--yellow);color:var(--navy)}
+main{max-width:1200px;margin:0 auto;padding:20px}
+.view{display:none}.view.active{display:block}
+/* ---------- parts ---------- */
+.card{background:#fff;border-radius:12px;border:1px solid var(--line);padding:18px 20px;margin-bottom:16px}
+.card h2{font-size:16px;margin:0 0 14px;display:flex;align-items:center;gap:10px}
+.card h2::before{content:"";width:6px;height:18px;background:var(--yellow);border-radius:3px;box-shadow:0 0 0 1px var(--navy) inset}
+.card h2 .sub{font-size:12px;font-weight:400;color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+label.f{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:4px;font-weight:600}
+input,select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--text)}
+input:focus,select:focus{outline:2px solid var(--yellow);border-color:var(--navy)}
+.btn{background:var(--navy);color:#fff;border:1px solid var(--navy);border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap}
+.btn:hover{background:var(--navy3)}
+.btn.y{background:var(--yellow);color:var(--navy);border-color:var(--yellow)}
+.btn.y:hover{filter:brightness(.95)}
+.btn.ghost{background:#fff;color:var(--navy)}
+.btn.ghost:hover{background:var(--yellow-soft)}
+.btn.danger{background:#fff;color:var(--danger);border-color:#E9B7BA}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn.onnavy{background:transparent;border-color:rgba(255,255,255,.45);color:#fff}
+.btn.onnavy:hover{background:rgba(255,255,255,.1)}
+.hint{font-size:12px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;justify-content:center;min-width:34px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.03em}
+.warn{background:#FFF3F3;border:1px solid #F1C5C8;color:var(--danger);border-radius:8px;padding:8px 12px;font-size:12.5px;margin-top:10px}
+.okmsg{background:#EEF8F2;border:1px solid #BFE3CF;color:var(--ok);border-radius:8px;padding:8px 12px;font-size:12.5px;margin-top:10px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:14px;height:14px;border-radius:50%;display:inline-block;border:1.5px solid var(--navy)}
+/* ---------- members ---------- */
+table.list{width:100%;border-collapse:collapse}
+table.list th{background:var(--navy);color:#fff;font-size:12px;font-weight:700;padding:9px 10px;text-align:left}
+table.list th:first-child{border-radius:8px 0 0 0}table.list th:last-child{border-radius:0 8px 0 0}
+table.list td{padding:8px 10px;border-bottom:1px solid var(--line)}
+table.list tr:nth-child(even) td{background:#F8FAFC}
+.num{font-weight:800;font-variant-numeric:tabular-nums}
+.empty-state{text-align:center;color:var(--muted);padding:28px}
+/* ---------- set tabs ---------- */
+.settabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.settabs button{border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:999px;padding:7px 16px;font-weight:700;cursor:pointer;font-size:13px;position:relative}
+.settabs button.active{background:var(--navy);color:var(--yellow)}
+.settabs button .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--yellow);margin-left:6px;box-shadow:0 0 0 1px var(--navy)}
+/* ---------- lineup ---------- */
+.lineup-wrap{display:grid;grid-template-columns:minmax(320px,560px) 1fr;gap:20px}
+@media(max-width:900px){.lineup-wrap{grid-template-columns:1fr}}
+.court-ui{background:#FBF6D8;border:3px solid var(--navy);border-top-width:8px;border-radius:4px;padding:14px;position:relative}
+.court-ui .netlabel{position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:var(--navy);color:var(--yellow);font-size:11px;font-weight:800;letter-spacing:.3em;padding:2px 10px;border-radius:4px}
+.lu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.lu-grid .attack{grid-column:1/-1;border-top:2px solid var(--navy);margin:2px 0;position:relative}
+.lu-grid .attack span{position:absolute;right:0;top:-9px;background:#FBF6D8;padding:0 6px;font-size:10px;color:var(--muted)}
+.lu-cell{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px}
+.lu-cell .pl{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px;display:flex;justify-content:space-between}
+.lu-cell select{width:100%;font-size:13px;padding:6px}
+.lu-cell.srv{box-shadow:0 0 0 2px var(--yellow) inset}
+.lib-box{background:#F6F2FD;border:1px solid #D9CCF3;border-radius:10px;padding:12px;margin-top:14px}
+.lib-box .tg{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.lib-box .tg label{font-size:13px;display:flex;align-items:center;gap:4px;background:#fff;border:1px solid var(--line);padding:4px 10px;border-radius:999px;cursor:pointer}
+/* ---------- rotation cards / mini grid ---------- */
+.rot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:900px){.rot-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.rot-grid{grid-template-columns:1fr}}
+.rot-card{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.rot-card .rh{background:var(--navy);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:7px 12px;font-weight:800;font-size:13px}
+.rot-card .rh .sp{background:var(--yellow);color:var(--navy);border-radius:999px;padding:1px 9px;font-size:11px}
+.rot-card .rb{padding:10px}
+.mg-net{height:6px;background:var(--navy);border-radius:2px;margin-bottom:4px;position:relative}
+.mg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.mc{border:1px solid var(--line);border-left:5px solid var(--pc,#ccc);border-radius:6px;padding:5px 6px 5px 7px;position:relative;min-height:50px;background:#fff}
+.mc.back{background:#F7F9FC}
+.mc.lib{background:#F3EEFC}
+.mc .pz{font-size:9.5px;color:var(--muted);font-weight:700}
+.mc .srv{position:absolute;right:4px;top:4px;background:var(--yellow);color:var(--navy);font-size:9px;font-weight:800;padding:0 5px;border-radius:3px}
+.mc .mn{font-weight:800;font-size:12.5px;line-height:1.25;word-break:break-all}
+.mc .mn .no{font-variant-numeric:tabular-nums;color:var(--navy3);margin-right:3px}
+.mc .mp{font-size:10px;color:var(--muted)}
+.mc.empty{border-left-color:#ddd;color:#aab}
+.mg .divider{grid-column:1/-1;height:0;border-top:1.5px dashed #9AA7BB;margin:1px 0}
+/* ---------- formation ---------- */
+.fm-bar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.seg{display:inline-flex;border:1px solid var(--navy);border-radius:999px;overflow:hidden}
+.seg button{border:none;background:#fff;color:var(--navy);padding:7px 14px;font-weight:800;cursor:pointer;font-size:13px}
+.seg button+button{border-left:1px solid var(--navy)}
+.seg button.active{background:var(--navy);color:var(--yellow)}
+.seg.pat button.active{background:var(--yellow);color:var(--navy)}
+.fm-layout{display:grid;grid-template-columns:minmax(300px,500px) 1fr;gap:18px;align-items:start}
+@media(max-width:860px){.fm-layout{grid-template-columns:1fr}}
+.court-box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
+.court-box svg{width:100%;height:auto;display:block;touch-action:none;user-select:none}
+.court-box .ttl{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:800}
+g.pl{cursor:grab}
+g.pl.drag{cursor:grabbing}
+g.pl.drag circle{filter:drop-shadow(0 3px 4px rgba(0,0,0,.35))}
+.occ-list{display:flex;flex-direction:column;gap:6px}
+.occ{display:flex;align-items:center;gap:10px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px}
+.occ .z{width:54px;font-size:11px;color:var(--muted);font-weight:700}
+.occ .dotc{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--navy);flex:none}
+.tools{display:flex;flex-direction:column;gap:8px}
+.tools .row{align-items:center}
+/* ---------- pdf ---------- */
+.pdf-opts{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.pdf-opts label{display:flex;gap:6px;align-items:center;font-weight:700;background:#fff;border:1px solid var(--line);padding:6px 12px;border-radius:999px;cursor:pointer}
+.preview{background:#5A6B86;border-radius:12px;padding:20px;display:flex;flex-wrap:wrap;gap:18px;justify-content:center;max-height:80vh;overflow:auto}
+.preview .page{zoom:.5;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+#renderArea{position:fixed;left:-20000px;top:0}
+#printArea{display:none}
+.overlay{position:fixed;inset:0;background:rgba(0,31,67,.75);display:none;align-items:center;justify-content:center;z-index:99;color:#fff;font-weight:800;font-size:16px;flex-direction:column;gap:12px}
+.overlay.show{display:flex}
+.spinner{width:42px;height:42px;border:5px solid rgba(255,255,255,.25);border-top-color:var(--yellow);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* ---------- printable page ---------- */
+.page{width:794px;height:1123px;background:#fff;position:relative;padding:30px 36px 0;overflow:hidden;font-family:var(--font);color:#13203A}
+.pg-head{background:var(--navy);color:#fff;border-radius:10px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:5px solid var(--yellow);height:74px}
+.pg-team{font-size:20px;font-weight:800;letter-spacing:.04em}
+.pg-meta{font-size:11.5px;opacity:.85;margin-top:3px}
+.pg-set{display:flex;align-items:baseline;gap:3px;color:var(--yellow);font-weight:800}
+.pg-set b{font-size:34px;line-height:1}
+.pg-set span{font-size:13px}
+.pg-sub{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;margin:12px 0 8px;color:var(--navy)}
+.pg-sub::before{content:"";width:6px;height:16px;background:var(--yellow);border-radius:2px;box-shadow:0 0 0 1px var(--navy) inset}
+.pg-sub .s2{font-size:11px;color:var(--muted);font-weight:500;margin-left:auto}
+.pg-foot{position:absolute;left:36px;right:36px;bottom:14px;display:flex;justify-content:space-between;font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:5px}
+.st-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.st-table th{background:var(--navy);color:#fff;padding:6px 8px;font-size:11px;text-align:left}
+.st-table td{padding:6px 8px;border-bottom:1px solid var(--line)}
+.st-table tr.libr td{background:#F3EEFC}
+.page .rot-grid{grid-template-columns:repeat(3,1fr);gap:12px}
+.page .mc{min-height:92px;padding-top:8px}
+.page .mc .mn{font-size:15px;margin-top:8px}
+.page .mc .mp{font-size:11px;margin-top:2px}
+.fm-row{display:flex;gap:14px;align-items:stretch;margin-bottom:10px;height:290px}
+.fm-label{width:176px;flex:none;border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.fm-label .rb{display:flex;align-items:center;gap:8px}
+.fm-label .rbig{background:var(--navy);color:var(--yellow);font-weight:800;font-size:20px;border-radius:8px;padding:4px 10px}
+.fm-label .spx{font-size:12px;font-weight:800;color:var(--navy)}
+.fm-label .mc{min-height:38px;padding:3px 4px 3px 5px;border-left-width:4px}
+.fm-label .mc .mn{font-size:10px}
+.fm-label .mc .mp,.fm-label .mc .srv{display:none}
+.fm-label .mc .pz{font-size:8.5px}
+.fm-court{width:230px;flex:none;display:flex;flex-direction:column;align-items:center}
+.fm-court .cap{font-size:12px;font-weight:800;padding:2px 12px;border-radius:999px;margin-bottom:4px}
+.fm-court .cap.rec{background:var(--yellow);color:var(--navy)}
+.fm-court .cap.dig{background:var(--navy);color:#fff}
+.fm-court svg{width:230px;height:264px}
+@media print{
+  @page{size:A4;margin:0}
+  body{background:#fff}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block}
+  #printArea .page{page-break-after:always;break-after:page}
+}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="app-inner">
+    <div class="logo">
+      <svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="#F4E511" stroke="#fff" stroke-width="2"/><path d="M17 2c-3 6-3 14 0 30M3 12c8 2 17 0 26-8M5 25c9-6 18-7 27-3" fill="none" stroke="#001F43" stroke-width="2.2"/></svg>
+      <div><small>VOLLEYBALL FORMATION</small>バレーボールフォーメーション</div>
+    </div>
+    <div class="head-tools">
+      <span class="team-badge" id="teamBadge">チーム名未設定</span>
+      <button class="btn sm y" id="btnInstall" style="display:none">アプリとしてインストール</button>
+      <button class="btn sm onnavy" id="btnIosGuide" style="display:none">ホーム画面に追加</button>
+      <button class="btn sm onnavy" id="btnExport">データ保存</button>
+      <button class="btn sm onnavy" id="btnImport">データ読込</button>
+      <input type="file" id="fileImport" accept=".json,application/json" hidden>
+    </div>
+  </div>
+</header>
+<nav class="tabs">
+  <div class="app-inner">
+    <button data-tab="members" class="active"><span class="n">1</span>メンバー登録</button>
+    <button data-tab="rotation"><span class="n">2</span>ローテーション表</button>
+    <button data-tab="formation"><span class="n">3</span>フォーメーション表</button>
+    <button data-tab="pdf"><span class="n">4</span>PDF出力</button>
+  </div>
+</nav>
+
+<main>
+  <!-- ===== 1 メンバー登録 ===== -->
+  <section class="view active" id="view-members">
+    <div class="card">
+      <h2>チーム情報 <span class="sub">PDFのヘッダーに表示されます</span></h2>
+      <div class="row">
+        <label class="f">チーム名<input id="tName" placeholder="例：○○高校 男子バレー部" style="width:240px"></label>
+        <label class="f">大会・試合名<input id="tMatch" placeholder="例：新人大会 1回戦" style="width:200px"></label>
+        <label class="f">対戦相手<input id="tOpp" placeholder="例：△△高校" style="width:160px"></label>
+        <label class="f">日付<input id="tDate" type="date"></label>
+      </div>
+    </div>
+    <div class="card">
+      <h2 id="formTitle">メンバー登録</h2>
+      <div class="row">
+        <label class="f">背番号<input id="mNum" type="number" min="0" max="99" style="width:84px"></label>
+        <label class="f">氏名<input id="mName" placeholder="例：宮崎 太郎" style="width:180px"></label>
+        <label class="f">表示名（円の中・任意）<input id="mDisp" placeholder="未入力なら氏名" style="width:150px"></label>
+        <label class="f">学年<select id="mGrade"><option value="1">1年</option><option value="2">2年</option><option value="3">3年</option></select></label>
+        <label class="f">ポジション<select id="mPos"></select></label>
+        <button class="btn y" id="btnAdd">＋ 登録</button>
+        <button class="btn ghost" id="btnCancel" style="display:none">キャンセル</button>
+      </div>
+      <p class="hint" style="margin:10px 0 0">OH：アウトサイドヒッター／OP：オポジット／MB：ミドルブロッカー／S：セッター／L：リベロ／N：指定なし</p>
+      <div id="memberMsg"></div>
+    </div>
+    <div class="card">
+      <h2>登録メンバー一覧 <span class="sub" id="memberCount"></span></h2>
+      <div id="memberList"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn ghost sm" id="btnSample">サンプルデータを入れる</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 2 ローテーション ===== -->
+  <section class="view" id="view-rotation">
+    <div class="settabs" id="setTabsRot"></div>
+    <div class="card">
+      <h2>スターティングメンバー（ローテーション1） <span class="sub">各ポジションに選手を割り当てると、下にローテーション表が生成されます</span></h2>
+      <div class="lineup-wrap">
+        <div>
+          <div style="padding-top:22px"><div class="court-ui"><span class="netlabel">NET</span><div class="lu-grid" id="luGrid"></div></div></div>
+          <div class="row" style="margin-top:12px" id="luTools"></div>
+        </div>
+        <div>
+          <div class="lib-box">
+            <div style="font-weight:800;margin-bottom:6px">リベロ設定</div>
+            <label class="f">リベロ<select id="libSel" style="min-width:220px"></select></label>
+            <div class="hint" style="margin-top:10px">リベロと交代する選手（後衛 Pos1・5・6 にいるとき交代）</div>
+            <div class="tg" id="libTargets"></div>
+          </div>
+          <div id="luWarn"></div>
+          <div class="hint" style="margin-top:12px;line-height:1.7">
+            ・ローテーションは時計回り（Pos2→1→6→5→4→3→2）で進みます。<br>
+            ・「S1」などはセッターがいるポジション番号です。<br>
+            ・Pos1 の選手がサーバーです。
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>ローテーション表 <span class="sub" id="rotSetLabel"></span></h2>
+      <div id="rotCards"></div>
+      <div class="legend" id="legendRot" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- ===== 3 フォーメーション ===== -->
+  <section class="view" id="view-formation">
+    <div class="settabs" id="setTabsFm"></div>
+    <div class="fm-bar">
+      <div class="seg" id="rotSeg"></div>
+      <div class="seg pat" id="patSeg">
+        <button data-pat="rec">レセプション</button><button data-pat="dig">ディグ</button>
+      </div>
+    </div>
+    <div class="fm-layout">
+      <div class="court-box">
+        <div class="ttl"><span id="fmTitle"></span><span class="hint">円をドラッグして配置</span></div>
+        <div id="courtHost"></div>
+        <div class="legend" id="legendFm" style="margin-top:10px"></div>
+      </div>
+      <div>
+        <div class="card">
+          <h2>コート上の選手</h2>
+          <div class="occ-list" id="occList"></div>
+          <div id="faultBox"></div>
+        </div>
+        <div class="card">
+          <h2>配置ツール</h2>
+          <div class="tools">
+            <div class="row"><button class="btn ghost sm" id="btnReset">このパターンを基本配置に戻す</button></div>
+            <div class="row"><button class="btn ghost sm" id="btnRec2Dig">レセプションの配置をディグにコピー</button></div>
+            <div class="row">
+              <select id="copyFromSet"></select>
+              <button class="btn ghost sm" id="btnCopySet">から全ローテの配置をコピー</button>
+            </div>
+            <p class="hint" style="margin:0">配置はポジション番号（Pos1〜6）ごとに保存されるため、選手を入れ替えても配置は残ります。コート外（サービスゾーン）にも置けます。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 4 PDF ===== -->
+  <section class="view" id="view-pdf">
+    <div class="card">
+      <h2>PDF出力 <span class="sub">セットごとに「ローテーション表」1ページ＋「フォーメーション表」2ページ（A4縦）</span></h2>
+      <div class="pdf-opts" id="pdfSets"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn y" id="btnPdf">PDFをダウンロード</button>
+        <button class="btn ghost" id="btnPrint">印刷する（ブラウザの印刷からPDF保存も可）</button>
+      </div>
+      <p class="hint" id="pdfHint"></p>
+    </div>
+    <div class="preview" id="preview"></div>
+  </section>
+</main>
+
+<div id="renderArea"></div>
+<div id="printArea"></div>
+<div class="toast" id="updToast"><span>新しいバージョンがあります。</span><button class="btn sm y" id="btnUpdate">更新する</button></div>
+<div class="toast" id="iosToast"><div class="ios-guide"><b>ホーム画面に追加する方法（iPad／iPhone）</b><br>Safariの共有ボタン（□↑）→「ホーム画面に追加」をタップしてください。</div><button class="btn sm y" id="btnIosClose">閉じる</button></div>
+<div class="overlay" id="overlay"><div class="spinner"></div><div id="overlayMsg">PDFを作成しています…</div></div>
+
+<script>
+/* ==================== 定数 ==================== */
+const POSITIONS = {
+  OH:{name:'アウトサイドヒッター', color:'#2F7DE1', text:'#FFFFFF'},
+  OP:{name:'オポジット',           color:'#E4572E', text:'#FFFFFF'},
+  MB:{name:'ミドルブロッカー',     color:'#1E9E6A', text:'#FFFFFF'},
+  S: {name:'セッター',             color:'#F4E511', text:'#001F43'},
+  L: {name:'リベロ',               color:'#8E5BD8', text:'#FFFFFF'},
+  N: {name:'指定なし',             color:'#8A94A6', text:'#FFFFFF'},
+};
+const POS_ORDER = ['OH','OP','MB','S','L','N'];
+const GRID_ORDER = [4,3,2,5,6,1];
+const BACK = [1,5,6];
+const SETS = 5;
+const R = 26;               // 円の半径（全員同一）
+const VB_W = 400, VB_H = 460;
+const DEFAULTS = {
+  rec:{1:[320,300],2:[320,100],3:[200,100],4:[80,100],5:[80,300],6:[200,300]},
+  dig:{1:[335,320],2:[320,60],3:[200,60],4:[80,60],5:[65,320],6:[200,362]},
+};
+const PAT_LABEL = {rec:'レセプション', dig:'ディグ'};
+const STORE_KEY = 'vbFormation_v1';
+
+/* ==================== 状態 ==================== */
+const newSet = () => ({lineup:{1:null,2:null,3:null,4:null,5:null,6:null}, libero:null, liberoTargets:[], autoTargets:true, formations:{}});
+let state = {team:{name:'',match:'',opponent:'',date:''}, members:[], sets:Array.from({length:SETS}, newSet)};
+const ui = {tab:'members', set:0, rot:1, pat:'rec', editId:null};
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){ const d = JSON.parse(raw); if(d && d.members) state = normalize(d); }
+  }catch(e){}
+}
+function normalize(d){
+  const s = {team:Object.assign({name:'',match:'',opponent:'',date:''}, d.team||{}), members:d.members||[], sets:[]};
+  for(let i=0;i<SETS;i++) s.sets.push(Object.assign(newSet(), (d.sets||[])[i]||{}));
+  return s;
+}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+/* ==================== ユーティリティ ==================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const member = id => state.members.find(m => m.id === id) || null;
+const dispName = m => m ? ((m.disp && m.disp.trim()) || m.name.replace(/\s+/g,'')) : '';
+const sortedMembers = () => [...state.members].sort((a,b) => (+a.num) - (+b.num));
+const curSet = () => state.sets[ui.set];
+const setHasLineup = s => Object.values(s.lineup).some(Boolean);
+
+function rawId(set, r, p){ return set.lineup[((p - 1 + (r - 1)) % 6) + 1]; }
+function occupant(set, r, p){
+  const id = rawId(set, r, p);
+  const m = member(id);
+  if(m && BACK.includes(p) && set.libero && set.liberoTargets.includes(id)){
+    const L = member(set.libero);
+    if(L) return {m:L, isL:true, replaced:m};
+  }
+  return {m, isL:false};
+}
+function setterPos(set, r){
+  const ids = Object.values(set.lineup).filter(Boolean);
+  const sid = ids.find(id => member(id)?.pos === 'S');
+  if(!sid) return null;
+  for(let p=1;p<=6;p++) if(rawId(set, r, p) === sid) return p;
+  return null;
+}
+function getXY(set, r, pat, p){
+  const f = set.formations?.[r]?.[pat]?.[p];
+  return f ? f : DEFAULTS[pat][p];
+}
+function setXY(set, r, pat, p, xy){
+  set.formations[r] = set.formations[r] || {};
+  set.formations[r][pat] = set.formations[r][pat] || {};
+  set.formations[r][pat][p] = [Math.round(xy[0]*10)/10, Math.round(xy[1]*10)/10];
+}
+function textWidthUnits(str){
+  let w = 0;
+  for(const ch of str) w += /[\x20-\x7E｡-ﾟ]/.test(ch) ? 0.58 : 1;
+  return w;
+}
+function legendHTML(){
+  return POS_ORDER.map(k => `<span><i style="background:${POSITIONS[k].color}"></i>${k} ${POSITIONS[k].name}</span>`).join('');
+}
+
+/* ==================== コート SVG ==================== */
+function courtSVG(set, r, pat, opts={}){
+  const font = "Hiragino Sans, Hiragino Kaku Gothic ProN, Noto Sans JP, Yu Gothic, Meiryo, sans-serif";
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB_W} ${VB_H}" font-family="${font}"${opts.w?` width="${opts.w}" height="${opts.h}"`:''}>`;
+  s += `<rect x="0" y="0" width="${VB_W}" height="${VB_H}" rx="10" fill="#E6EBF3"/>`;
+  s += `<rect x="20" y="30" width="360" height="360" fill="#FBF6D8" stroke="#001F43" stroke-width="3"/>`;
+  // アタックライン（3m）
+  s += `<line x1="20" y1="150" x2="380" y2="150" stroke="#001F43" stroke-width="2.2"/>`;
+  s += `<line x1="2" y1="150" x2="20" y2="150" stroke="#001F43" stroke-width="2" stroke-dasharray="4 4"/>`;
+  s += `<line x1="380" y1="150" x2="398" y2="150" stroke="#001F43" stroke-width="2" stroke-dasharray="4 4"/>`;
+  s += `<text x="376" y="145" text-anchor="end" font-size="10" fill="#6A7891">アタックライン</text>`;
+  // ゾーン番号（うすく）
+  for(let p=1;p<=6;p++){ const [x,y] = DEFAULTS.rec[p]; s += `<text x="${x}" y="${y+5}" text-anchor="middle" font-size="40" font-weight="800" fill="#001F43" fill-opacity="0.06">${p}</text>`; }
+  // ネット
+  s += `<rect x="4" y="25" width="392" height="10" fill="#001F43"/>`;
+  for(let x=10;x<392;x+=12) s += `<line x1="${x}" y1="25" x2="${x}" y2="35" stroke="#F4E511" stroke-opacity=".5" stroke-width="1"/>`;
+  s += `<text x="200" y="18" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="6" fill="#001F43">NET</text>`;
+  s += `<text x="200" y="444" text-anchor="middle" font-size="11" fill="#6A7891">サービスゾーン</text>`;
+  if(opts.title){
+    s += `<text x="12" y="${VB_H-12}" font-size="12" font-weight="800" fill="#001F43">${esc(opts.title)}</text>`;
+  }
+  // 選手（正円・同一サイズ）
+  for(let p=1;p<=6;p++){
+    const o = occupant(set, r, p);
+    const [x,y] = getXY(set, r, pat, p);
+    if(!o.m){
+      s += `<g transform="translate(${x},${y})"><circle r="${R}" fill="#fff" fill-opacity=".7" stroke="#8A94A6" stroke-width="2" stroke-dasharray="4 3"/><text text-anchor="middle" dy="4" font-size="10" fill="#8A94A6">Pos${p}</text></g>`;
+      continue;
+    }
+    const pc = POSITIONS[o.m.pos] || POSITIONS.N;
+    const name = dispName(o.m);
+    const fs = clamp(44 / Math.max(textWidthUnits(name), 1), 6.5, 15);
+    s += `<g class="pl" data-p="${p}" transform="translate(${x},${y})">`;
+    s += `<circle r="${R}" fill="${pc.color}" stroke="#001F43" stroke-width="2.2"/>`;
+    if(o.m.pos === 'S') s += `<circle r="${R-4}" fill="none" stroke="#001F43" stroke-width="1" stroke-opacity=".35"/>`;
+    s += `<text text-anchor="middle" dominant-baseline="central" y="0.5" font-size="${fs.toFixed(1)}" font-weight="800" fill="${pc.text}">${esc(name)}</text>`;
+    s += `</g>`;
+  }
+  s += `</svg>`;
+  return s;
+}
+
+/* ==================== ミニローテ表 ==================== */
+function miniGridHTML(set, r){
+  let h = `<div class="mg-net"></div><div class="mg">`;
+  GRID_ORDER.forEach((p, i) => {
+    if(i === 3) h += `<div class="divider"></div>`;
+    const o = occupant(set, r, p);
+    const back = BACK.includes(p) ? ' back' : '';
+    if(!o.m){ h += `<div class="mc empty${back}"><div class="pz">Pos${p}</div><div class="mn">—</div></div>`; return; }
+    const pc = POSITIONS[o.m.pos] || POSITIONS.N;
+    h += `<div class="mc${back}${o.isL?' lib':''}" style="--pc:${pc.color}">`
+      + `<div class="pz">Pos${p}</div>${p===1?'<span class="srv">サーブ</span>':''}`
+      + `<div class="mn"><span class="no">${esc(o.m.num)}</span>${esc(dispName(o.m))}</div>`
+      + `<div class="mp">${o.m.pos}${o.isL?` ⇄ ${esc(dispName(o.replaced))}`:''}</div></div>`;
+  });
+  return h + `</div>`;
+}
+function rotCardsHTML(set){
+  let h = `<div class="rot-grid">`;
+  for(let r=1;r<=6;r++){
+    const sp = setterPos(set, r);
+    h += `<div class="rot-card"><div class="rh"><span>ローテーション ${r}</span>${sp?`<span class="sp">S${sp}</span>`:''}</div><div class="rb">${miniGridHTML(set, r)}</div></div>`;
+  }
+  return h + `</div>`;
+}
+
+/* ==================== タブ ==================== */
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => {
+  ui.tab = b.dataset.tab;
+  document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + ui.tab));
+  render();
+  window.scrollTo({top:0});
+}));
+
+function render(){
+  $('#teamBadge').textContent = state.team.name || 'チーム名未設定';
+  if(ui.tab === 'members') renderMembers();
+  if(ui.tab === 'rotation') renderRotation();
+  if(ui.tab === 'formation') renderFormation();
+  if(ui.tab === 'pdf') renderPdfTab();
+}
+
+function setTabsHTML(){
+  let h = '';
+  for(let i=0;i<SETS;i++) h += `<button data-set="${i}" class="${i===ui.set?'active':''}">第${i+1}セット${setHasLineup(state.sets[i])?'<span class="dot"></span>':''}</button>`;
+  return h;
+}
+function bindSetTabs(el){
+  el.innerHTML = setTabsHTML();
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { ui.set = +b.dataset.set; render(); }));
+}
+
+/* ==================== 1. メンバー ==================== */
+$('#mPos').innerHTML = POS_ORDER.map(k => `<option value="${k}">${k}（${POSITIONS[k].name}）</option>`).join('');
+['tName','tMatch','tOpp','tDate'].forEach(id => {
+  $('#'+id).addEventListener('input', e => {
+    const key = {tName:'name', tMatch:'match', tOpp:'opponent', tDate:'date'}[id];
+    state.team[key] = e.target.value; save();
+    $('#teamBadge').textContent = state.team.name || 'チーム名未設定';
+  });
+});
+
+function renderMembers(){
+  $('#tName').value = state.team.name; $('#tMatch').value = state.team.match;
+  $('#tOpp').value = state.team.opponent; $('#tDate').value = state.team.date;
+  const list = sortedMembers();
+  $('#memberCount').textContent = `${list.length}名`;
+  if(!list.length){ $('#memberList').innerHTML = `<div class="empty-state">まだメンバーが登録されていません。上のフォームから登録してください。</div>`; return; }
+  let h = `<table class="list"><thead><tr><th style="width:70px">背番号</th><th>氏名</th><th>表示名</th><th style="width:70px">学年</th><th>ポジション</th><th style="width:140px"></th></tr></thead><tbody>`;
+  list.forEach(m => {
+    const pc = POSITIONS[m.pos] || POSITIONS.N;
+    h += `<tr><td class="num">${esc(m.num)}</td><td>${esc(m.name)}</td><td>${esc(dispName(m))}</td><td>${esc(m.grade)}年</td>`
+      + `<td><span class="chip" style="background:${pc.color};color:${pc.text}">${m.pos}</span> <span class="hint">${pc.name}</span></td>`
+      + `<td><button class="btn ghost sm" data-edit="${m.id}">編集</button> <button class="btn danger sm" data-del="${m.id}">削除</button></td></tr>`;
+  });
+  $('#memberList').innerHTML = h + `</tbody></table>`;
+  $('#memberList').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => startEdit(b.dataset.edit));
+  $('#memberList').querySelectorAll('[data-del]').forEach(b => b.onclick = () => delMember(b.dataset.del));
+}
+function memberMsg(t, ok){ $('#memberMsg').innerHTML = t ? `<div class="${ok?'okmsg':'warn'}">${esc(t)}</div>` : ''; }
+function resetForm(){
+  ui.editId = null;
+  $('#mNum').value = ''; $('#mName').value = ''; $('#mDisp').value = ''; $('#mGrade').value = '1'; $('#mPos').value = 'OH';
+  $('#btnAdd').textContent = '＋ 登録'; $('#btnCancel').style.display = 'none'; $('#formTitle').textContent = 'メンバー登録';
+}
+function startEdit(id){
+  const m = member(id); if(!m) return;
+  ui.editId = id;
+  $('#mNum').value = m.num; $('#mName').value = m.name; $('#mDisp').value = m.disp || ''; $('#mGrade').value = m.grade; $('#mPos').value = m.pos;
+  $('#btnAdd').textContent = '更新'; $('#btnCancel').style.display = ''; $('#formTitle').textContent = `メンバー編集（#${m.num}）`;
+  memberMsg(''); window.scrollTo({top:0, behavior:'smooth'});
+}
+$('#btnCancel').onclick = () => { resetForm(); memberMsg(''); };
+$('#btnAdd').onclick = () => {
+  const num = $('#mNum').value.trim(), name = $('#mName').value.trim();
+  if(num === '' || isNaN(+num)) return memberMsg('背番号を入力してください。');
+  if(!name) return memberMsg('氏名を入力してください。');
+  if(state.members.some(m => String(m.num) === String(+num) && m.id !== ui.editId)) return memberMsg(`背番号 ${+num} はすでに登録されています。`);
+  const data = {num:String(+num), name, disp:$('#mDisp').value.trim(), grade:$('#mGrade').value, pos:$('#mPos').value};
+  if(ui.editId){ Object.assign(member(ui.editId), data); memberMsg(`#${data.num} ${name} を更新しました。`, true); }
+  else { state.members.push({id:uid(), ...data}); memberMsg(`#${data.num} ${name} を登録しました。`, true); }
+  save(); resetForm(); renderMembers(); $('#mNum').focus();
+};
+// 日本語入力（IME）の変換確定のEnterでは登録しない
+['mNum','mName','mDisp'].forEach(id => {
+  const el = $('#'+id);
+  let composing = false, compEndAt = 0;
+  el.addEventListener('compositionstart', () => { composing = true; });
+  el.addEventListener('compositionend', () => { composing = false; compEndAt = Date.now(); });
+  el.addEventListener('keydown', e => {
+    if(e.key !== 'Enter') return;
+    // isComposing / keyCode 229 / 変換確定直後（Safari対策）は無視
+    if(e.isComposing || composing || e.keyCode === 229 || Date.now() - compEndAt < 80) return;
+    e.preventDefault();
+    $('#btnAdd').click();
+  });
+});
+function delMember(id){
+  const m = member(id); if(!m) return;
+  if(!confirm(`#${m.num} ${m.name} を削除しますか？\n（ローテーションの割り当てからも外れます）`)) return;
+  state.members = state.members.filter(x => x.id !== id);
+  state.sets.forEach(s => {
+    for(const p in s.lineup) if(s.lineup[p] === id) s.lineup[p] = null;
+    if(s.libero === id) s.libero = null;
+    s.liberoTargets = s.liberoTargets.filter(x => x !== id);
+  });
+  save(); renderMembers();
+}
+$('#btnSample').onclick = () => {
+  if(state.members.length && !confirm('現在のデータをサンプルデータに置き換えますか？')) return;
+  const mk = (num,name,grade,pos,disp='') => ({id:uid(), num:String(num), name, disp, grade:String(grade), pos});
+  const ms = [
+    mk(1,'佐藤 大翔',3,'OH','佐藤'), mk(2,'鈴木 蓮',3,'S','鈴木'), mk(3,'高橋 陽向',2,'MB','高橋'),
+    mk(4,'田中 湊',3,'OP','田中'), mk(5,'伊藤 悠真',2,'OH','伊藤'), mk(6,'渡辺 颯太',2,'MB','渡辺'),
+    mk(7,'山本 律',1,'L','山本'), mk(8,'中村 樹',1,'OH','中村'), mk(9,'小林 蒼',1,'MB','小林'),
+    mk(10,'加藤 新',2,'S','加藤'), mk(11,'吉田 結翔',1,'OP','吉田'), mk(12,'山田 朝陽',1,'N','山田'),
+  ];
+  state.members = ms;
+  state.sets = Array.from({length:SETS}, newSet);
+  const by = n => ms.find(m => m.num === String(n)).id;
+  const s1 = state.sets[0];
+  s1.lineup = {1:by(2), 2:by(1), 3:by(3), 4:by(4), 5:by(5), 6:by(6)};
+  s1.libero = by(7); s1.liberoTargets = [by(3), by(6)];
+  if(!state.team.name) state.team.name = 'サンプル高校 バレーボール部';
+  save(); resetForm(); renderMembers(); memberMsg('サンプルデータを入れました（第1セットのスタメンも設定済み）。', true);
+};
+
+/* ==================== 2. ローテーション ==================== */
+function memberOptions(selected, filter){
+  let h = `<option value="">— 未設定 —</option>`;
+  sortedMembers().filter(filter || (()=>true)).forEach(m => {
+    h += `<option value="${m.id}"${m.id===selected?' selected':''}>#${esc(m.num)} ${esc(m.name)}（${m.pos}）</option>`;
+  });
+  return h;
+}
+function autoLiberoTargets(set){
+  if(set.autoTargets) set.liberoTargets = Object.values(set.lineup).filter(id => member(id)?.pos === 'MB');
+}
+function renderRotation(){
+  bindSetTabs($('#setTabsRot'));
+  const set = curSet();
+  let g = '';
+  GRID_ORDER.forEach((p, i) => {
+    if(i === 3) g += `<div class="attack"><span>アタックライン</span></div>`;
+    g += `<div class="lu-cell${p===1?' srv':''}"><div class="pl"><span>Pos${p}（${BACK.includes(p)?'後衛':'前衛'}）</span>${p===1?'<span>サーブ</span>':''}</div>`
+      + `<select data-p="${p}">${memberOptions(set.lineup[p])}</select></div>`;
+  });
+  $('#luGrid').innerHTML = g;
+  $('#luGrid').querySelectorAll('select').forEach(sel => sel.onchange = () => {
+    set.lineup[sel.dataset.p] = sel.value || null;
+    autoLiberoTargets(set); save(); renderRotation();
+  });
+  let t = `<button class="btn ghost sm" id="btnClearLu">このセットをクリア</button>`;
+  if(ui.set > 0) t = `<button class="btn ghost sm" id="btnCopyLu">第${ui.set}セットのスタメンをコピー</button>` + t;
+  $('#luTools').innerHTML = t;
+  if($('#btnCopyLu')) $('#btnCopyLu').onclick = () => {
+    const prev = state.sets[ui.set - 1];
+    set.lineup = {...prev.lineup}; set.libero = prev.libero; set.liberoTargets = [...prev.liberoTargets]; set.autoTargets = prev.autoTargets;
+    save(); renderRotation();
+  };
+  $('#btnClearLu').onclick = () => {
+    if(!confirm(`第${ui.set+1}セットのスタメン・リベロ・フォーメーションをすべてクリアしますか？`)) return;
+    state.sets[ui.set] = newSet(); save(); renderRotation();
+  };
+
+  $('#libSel').innerHTML = memberOptions(set.libero, m => !Object.values(set.lineup).includes(m.id) || m.id === set.libero);
+  $('#libSel').onchange = e => { set.libero = e.target.value || null; autoLiberoTargets(set); save(); renderRotation(); };
+  const ids = [...new Set(Object.values(set.lineup).filter(Boolean))];
+  $('#libTargets').innerHTML = !set.libero ? `<span class="hint">リベロを選ぶと設定できます</span>` :
+    (ids.length ? ids.map(id => { const m = member(id); return `<label><input type="checkbox" value="${id}"${set.liberoTargets.includes(id)?' checked':''}>#${esc(m.num)} ${esc(dispName(m))}（${m.pos}）</label>`; }).join('') : `<span class="hint">先にスタメンを設定してください</span>`);
+  $('#libTargets').querySelectorAll('input').forEach(cb => cb.onchange = () => {
+    set.autoTargets = false;
+    set.liberoTargets = [...$('#libTargets').querySelectorAll('input:checked')].map(x => x.value);
+    save(); renderRotation();
+  });
+
+  const w = [];
+  const filled = Object.values(set.lineup).filter(Boolean);
+  if(filled.length < 6) w.push(`未設定のポジションが ${6 - filled.length} か所あります。`);
+  if(new Set(filled).size !== filled.length) w.push('同じ選手が複数のポジションに入っています。');
+  if(set.libero && filled.includes(set.libero)) w.push('リベロに選んだ選手がスタメンにも入っています。');
+  if(set.libero && member(set.libero)?.pos !== 'L') w.push('リベロに選んだ選手のポジションが「L」ではありません（設定は有効です）。');
+  if(set.libero && !set.liberoTargets.length) w.push('リベロと交代する選手が選ばれていません。');
+  $('#luWarn').innerHTML = w.length ? `<div class="warn">${w.map(esc).join('<br>')}</div>` : (filled.length ? `<div class="okmsg">スタメンの設定はOKです。</div>` : '');
+
+  $('#rotSetLabel').textContent = `第${ui.set+1}セット`;
+  $('#rotCards').innerHTML = setHasLineup(set) ? rotCardsHTML(set) : `<div class="empty-state">スタメンを設定するとローテーション表が表示されます。</div>`;
+  $('#legendRot').innerHTML = legendHTML();
+}
+
+/* ==================== 3. フォーメーション ==================== */
+$('#patSeg').querySelectorAll('button').forEach(b => b.onclick = () => { ui.pat = b.dataset.pat; renderFormation(); });
+function renderFormation(){
+  bindSetTabs($('#setTabsFm'));
+  const set = curSet();
+  let rs = '';
+  for(let r=1;r<=6;r++){ const sp = setterPos(set, r); rs += `<button data-r="${r}" class="${r===ui.rot?'active':''}">R${r}${sp?` <small>(S${sp})</small>`:''}</button>`; }
+  $('#rotSeg').innerHTML = rs;
+  $('#rotSeg').querySelectorAll('button').forEach(b => b.onclick = () => { ui.rot = +b.dataset.r; renderFormation(); });
+  $('#patSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.pat === ui.pat));
+  $('#fmTitle').textContent = `第${ui.set+1}セット ／ ローテーション${ui.rot} ／ ${PAT_LABEL[ui.pat]}`;
+  $('#courtHost').innerHTML = courtSVG(set, ui.rot, ui.pat);
+  attachDrag($('#courtHost svg'));
+  $('#legendFm').innerHTML = legendHTML();
+  $('#copyFromSet').innerHTML = state.sets.map((s,i) => i===ui.set ? '' : `<option value="${i}">第${i+1}セット</option>`).join('');
+  renderFormSide();
+}
+function renderFormSide(){
+  const set = curSet();
+  let h = '';
+  [4,3,2,5,6,1].forEach(p => {
+    const o = occupant(set, ui.rot, p);
+    const pc = o.m ? (POSITIONS[o.m.pos] || POSITIONS.N) : null;
+    h += `<div class="occ"><span class="z">Pos${p}<br>${BACK.includes(p)?'後衛':'前衛'}</span>`
+      + (o.m ? `<span class="dotc" style="background:${pc.color}"></span><span><b>#${esc(o.m.num)} ${esc(o.m.name)}</b> <span class="hint">${o.m.pos}${o.isL?`（${esc(dispName(o.replaced))}と交代）`:''}${p===1?' ・サーバー':''}</span></span>` : `<span class="hint">未設定</span>`)
+      + `</div>`;
+  });
+  $('#occList').innerHTML = setHasLineup(set) ? h : `<div class="hint">「ローテーション表」タブで第${ui.set+1}セットのスタメンを設定してください。</div>`;
+  if(ui.pat === 'rec' && setHasLineup(set)){
+    const f = faultCheck(set, ui.rot);
+    $('#faultBox').innerHTML = f.length
+      ? `<div class="warn"><b>ポジショナルフォルトの可能性（目安）</b><br>${f.map(esc).join('<br>')}</div>`
+      : `<div class="okmsg">前後・左右の位置関係に問題はありません（円の中心で判定した目安）。</div>`;
+  } else $('#faultBox').innerHTML = '';
+}
+function faultCheck(set, r){
+  const xy = p => getXY(set, r, 'rec', p);
+  const nm = p => { const o = occupant(set, r, p); return o.m ? dispName(o.m) : `Pos${p}`; };
+  const msg = [];
+  [[4,5],[3,6],[2,1]].forEach(([f,b]) => { if(xy(b)[1] <= xy(f)[1]) msg.push(`後衛 Pos${b}（${nm(b)}）が前衛 Pos${f}（${nm(f)}）より前にいます。`); });
+  [[4,3],[3,2],[5,6],[6,1]].forEach(([a,b]) => { if(xy(a)[0] >= xy(b)[0]) msg.push(`Pos${a}（${nm(a)}）が Pos${b}（${nm(b)}）より右にいます。`); });
+  return msg;
+}
+function attachDrag(svg){
+  if(!svg) return;
+  const set = curSet();
+  svg.querySelectorAll('g.pl').forEach(g => {
+    g.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      svg.appendChild(g);
+      g.setPointerCapture(e.pointerId);
+      g.classList.add('drag');
+      const p = +g.dataset.p;
+      const pt = svg.createSVGPoint();
+      const toSvg = ev => { pt.x = ev.clientX; pt.y = ev.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); };
+      const st = toSvg(e), cur = getXY(set, ui.rot, ui.pat, p);
+      const off = [st.x - cur[0], st.y - cur[1]];
+      const move = ev => {
+        const q = toSvg(ev);
+        const x = clamp(q.x - off[0], R + 2, VB_W - R - 2), y = clamp(q.y - off[1], R + 2, VB_H - R - 2);
+        g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`);
+        setXY(set, ui.rot, ui.pat, p, [x, y]);
+      };
+      const up = () => {
+        g.classList.remove('drag');
+        g.removeEventListener('pointermove', move); g.removeEventListener('pointerup', up); g.removeEventListener('pointercancel', up);
+        save(); renderFormSide();
+      };
+      g.addEventListener('pointermove', move); g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
+    });
+  });
+}
+$('#btnReset').onclick = () => {
+  const set = curSet();
+  if(set.formations[ui.rot]) delete set.formations[ui.rot][ui.pat];
+  save(); renderFormation();
+};
+$('#btnRec2Dig').onclick = () => {
+  const set = curSet();
+  for(let p=1;p<=6;p++) setXY(set, ui.rot, 'dig', p, getXY(set, ui.rot, 'rec', p));
+  save(); ui.pat = 'dig'; renderFormation();
+};
+$('#btnCopySet').onclick = () => {
+  const from = +$('#copyFromSet').value;
+  if(isNaN(from)) return;
+  if(!confirm(`第${from+1}セットの全ローテーションの配置（レセプション・ディグ）を第${ui.set+1}セットにコピーしますか？`)) return;
+  curSet().formations = JSON.parse(JSON.stringify(state.sets[from].formations || {}));
+  save(); renderFormation();
+};
+
+/* ==================== ファイル保存（iOS対応） ==================== */
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+async function saveBlob(blob, name){
+  // iPad/iPhoneでは共有シートから「ファイルに保存」できるようにする
+  if(isIOS && navigator.canShare){
+    const file = new File([blob], name, {type: blob.type});
+    if(navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file], title:name}); return; }
+      catch(err){ if(err && err.name === 'AbortError') return; }
+    }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+/* ==================== 4. PDF ==================== */
+const pdfSel = new Set();
+function renderPdfTab(){
+  const avail = state.sets.map((s,i) => setHasLineup(s) ? i : -1).filter(i => i >= 0);
+  if(!pdfSel.size) avail.forEach(i => pdfSel.add(i));
+  [...pdfSel].forEach(i => { if(!avail.includes(i)) pdfSel.delete(i); });
+  $('#pdfSets').innerHTML = avail.length
+    ? avail.map(i => `<label><input type="checkbox" value="${i}"${pdfSel.has(i)?' checked':''}>第${i+1}セット</label>`).join('')
+    : `<span class="hint">スタメンが設定されたセットがありません。「ローテーション表」タブで設定してください。</span>`;
+  $('#pdfSets').querySelectorAll('input').forEach(cb => cb.onchange = () => { cb.checked ? pdfSel.add(+cb.value) : pdfSel.delete(+cb.value); renderPreview(); });
+  $('#pdfHint').textContent = (window.jspdf && window.html2canvas) ? '' : '※ PDF作成ライブラリを読み込めませんでした（オフライン環境など）。「印刷する」からブラウザの「PDFに保存」を選んでください。';
+  renderPreview();
+}
+function selectedSets(){ return [...pdfSel].sort((a,b) => a - b); }
+function renderPreview(){
+  const pages = buildPages(selectedSets());
+  $('#preview').innerHTML = pages.length ? pages.join('') : `<div style="color:#fff;padding:40px">出力するセットを選んでください。</div>`;
+}
+function pageHead(si){
+  const t = state.team;
+  const meta = [t.match, t.opponent ? `vs ${t.opponent}` : '', t.date ? t.date.replace(/-/g,'/') : ''].filter(Boolean).map(esc).join('　');
+  return `<div class="pg-head"><div><div class="pg-team">${esc(t.name || 'チーム名未設定')}</div><div class="pg-meta">${meta || '&nbsp;'}</div></div>`
+    + `<div class="pg-set"><span>第</span><b>${si+1}</b><span>セット</span></div></div>`;
+}
+function pageFoot(si, n, total){
+  return `<div class="pg-foot"><span>バレーボールフォーメーション</span><span>第${si+1}セット　${n} / ${total}</span></div>`;
+}
+function buildPages(setIdxs){
+  const pages = [];
+  setIdxs.forEach(si => {
+    const set = state.sets[si];
+    const total = 3;
+    // --- ローテーション表ページ ---
+    let rows = '';
+    for(let p=1;p<=6;p++){
+      const m = member(set.lineup[p]);
+      const pc = m ? (POSITIONS[m.pos] || POSITIONS.N) : null;
+      rows += `<tr><td><b>Pos${p}</b> <span style="color:#5B6880;font-size:11px">${BACK.includes(p)?'後衛':'前衛'}${p===1?'・サーブ':''}</span></td>`
+        + (m ? `<td class="num">${esc(m.num)}</td><td>${esc(m.name)}</td><td>${esc(m.grade)}年</td><td><span class="chip" style="background:${pc.color};color:${pc.text}">${m.pos}</span> ${pc.name}</td>` : `<td colspan="4" style="color:#9aa">未設定</td>`)
+        + `</tr>`;
+    }
+    const L = member(set.libero);
+    if(L){
+      const tg = set.liberoTargets.map(id => member(id)).filter(Boolean).map(m => esc(dispName(m))).join('・') || 'なし';
+      rows += `<tr class="libr"><td><b>リベロ</b></td><td class="num">${esc(L.num)}</td><td>${esc(L.name)}</td><td>${esc(L.grade)}年</td><td><span class="chip" style="background:${POSITIONS.L.color};color:#fff">L</span> 交代：${tg}</td></tr>`;
+    }
+    pages.push(`<div class="page">${pageHead(si)}`
+      + `<div class="pg-sub">スターティングメンバー</div>`
+      + `<table class="st-table"><thead><tr><th style="width:130px">ポジション</th><th style="width:60px">背番号</th><th>氏名</th><th style="width:56px">学年</th><th>役割</th></tr></thead><tbody>${rows}</tbody></table>`
+      + `<div class="pg-sub" style="margin-top:18px">ローテーション表<span class="s2">上段＝前衛（ネット側） ／ 下段＝後衛 ／ S○＝セッターの位置</span></div>`
+      + rotCardsHTML(set)
+      + `<div class="legend" style="margin-top:16px">${legendHTML()}</div>`
+      + pageFoot(si, 1, total) + `</div>`);
+    // --- フォーメーション表ページ（3ローテ／ページ） ---
+    [[1,2,3],[4,5,6]].forEach((rs, pi) => {
+      let body = '';
+      rs.forEach(r => {
+        const sp = setterPos(set, r);
+        body += `<div class="fm-row"><div class="fm-label"><div class="rb"><span class="rbig">R${r}</span><span class="spx">${sp?`セッター Pos${sp}`:''}</span></div>${miniGridHTML(set, r)}</div>`
+          + `<div class="fm-court"><span class="cap rec">レセプション</span>${courtSVG(set, r, 'rec', {w:230, h:264})}</div>`
+          + `<div class="fm-court"><span class="cap dig">ディグ</span>${courtSVG(set, r, 'dig', {w:230, h:264})}</div></div>`;
+      });
+      pages.push(`<div class="page">${pageHead(si)}`
+        + `<div class="pg-sub">フォーメーション表（ローテーション${rs[0]}〜${rs[2]}）<span class="s2">ネット側が上</span></div>`
+        + body + pageFoot(si, pi + 2, total) + `</div>`);
+    });
+  });
+  return pages;
+}
+function fileName(){
+  const base = (state.team.name || 'formation').replace(/[\\/:*?"<>|\s]+/g,'_');
+  return `${base}_${(state.team.date || new Date().toISOString().slice(0,10))}.pdf`;
+}
+$('#btnPdf').onclick = async () => {
+  const sets = selectedSets();
+  if(!sets.length) return alert('出力するセットを選んでください。');
+  if(!(window.jspdf && window.html2canvas)){ alert('PDF作成ライブラリを読み込めませんでした。印刷画面を開きますので「PDFに保存」を選んでください。'); return doPrint(); }
+  const ov = $('#overlay'); ov.classList.add('show');
+  try{
+    const area = $('#renderArea');
+    area.innerHTML = buildPages(sets).join('');
+    const els = [...area.querySelectorAll('.page')];
+    const pdf = new window.jspdf.jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
+    for(let i=0;i<els.length;i++){
+      $('#overlayMsg').textContent = `PDFを作成しています… ${i+1} / ${els.length}ページ`;
+      const canvas = await html2canvas(els[i], {scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false});
+      if(i) pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.93), 'JPEG', 0, 0, 210, 297);
+    }
+    await saveBlob(pdf.output('blob'), fileName());
+    area.innerHTML = '';
+  }catch(err){
+    console.error(err);
+    alert('PDFの作成に失敗しました。「印刷する」からPDF保存をお試しください。');
+  }finally{ ov.classList.remove('show'); $('#overlayMsg').textContent = 'PDFを作成しています…'; }
+};
+function doPrint(){
+  const sets = selectedSets();
+  if(!sets.length) return alert('出力するセットを選んでください。');
+  $('#printArea').innerHTML = buildPages(sets).join('');
+  setTimeout(() => { window.print(); }, 100);
+}
+$('#btnPrint').onclick = doPrint;
+window.addEventListener('afterprint', () => { $('#printArea').innerHTML = ''; });
+
+/* ==================== データ保存・読込 ==================== */
+$('#btnExport').onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  saveBlob(blob, `${(state.team.name || 'volleyball').replace(/[\\/:*?"<>|\s]+/g,'_')}_data.json`);
+};
+$('#btnImport').onclick = () => $('#fileImport').click();
+$('#fileImport').onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try{
+      const d = JSON.parse(rd.result);
+      if(!d.members) throw new Error();
+      if(!confirm('読み込んだデータで現在のデータを置き換えますか？')) return;
+      state = normalize(d); save(); pdfSel.clear(); render(); alert('データを読み込みました。');
+    }catch(err){ alert('ファイルを読み込めませんでした。このアプリで保存したJSONファイルを選んでください。'); }
+  };
+  rd.readAsText(f); e.target.value = '';
+};
+
+/* ==================== PWA ==================== */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  $('#btnInstall').style.display = '';
+});
+$('#btnInstall').onclick = async () => {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null; $('#btnInstall').style.display = 'none';
+};
+window.addEventListener('appinstalled', () => { $('#btnInstall').style.display = 'none'; });
+if(isIOS && !isStandalone) $('#btnIosGuide').style.display = '';
+$('#btnIosGuide').onclick = () => $('#iosToast').classList.add('show');
+$('#btnIosClose').onclick = () => $('#iosToast').classList.remove('show');
+
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  window.addEventListener('load', async () => {
+    const hadController = !!navigator.serviceWorker.controller;
+    try{
+      const reg = await navigator.serviceWorker.register('sw.js');
+      const showUpdate = w => {
+        $('#updToast').classList.add('show');
+        $('#btnUpdate').onclick = () => w.postMessage('skipWaiting');
+      };
+      if(reg.waiting && navigator.serviceWorker.controller) showUpdate(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw.addEventListener('statechange', () => {
+          if(nw.state === 'installed' && navigator.serviceWorker.controller) showUpdate(nw);
+        });
+      });
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if(hadController && !reloaded){ reloaded = true; location.reload(); } });
+    }catch(err){ console.warn('Service Worker登録失敗', err); }
+  });
+}
+
+/* ==================== 起動 ==================== */
+load();
+render();
+</script>
+</body>
+</html>
